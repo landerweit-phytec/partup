@@ -85,6 +85,21 @@ pu_find_mounted(const gchar *device)
 }
 
 gboolean
+pu_mount_squashfs(const gchar *source,
+         const gchar *mount_point,
+         GError **error)
+{
+    gchar *cmd;
+
+    cmd = g_strdup_printf("squashfuse %s %s", source, mount_point);
+
+    if (!pu_spawn_command_line_sync(cmd, error))
+        return FALSE;
+
+    return TRUE;
+}
+
+gboolean
 pu_mount(const gchar *source,
          const gchar *mount_point,
          const gchar *type,
@@ -100,6 +115,12 @@ pu_mount(const gchar *source,
     g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
 
     g_debug("Mounting %s on %s", source, mount_point);
+
+    if (!g_strcmp0(type, "squashfs")) {
+        if (pu_mount_squashfs(source, mount_point, error))
+            return TRUE;
+        g_clear_error(error);
+    }
 
     ctx = mnt_new_context();
     if (!ctx) {
@@ -152,6 +173,8 @@ pu_umount(const gchar *mount_point,
         return FALSE;
     }
     mnt_context_set_target(ctx, mount_point);
+    mnt_context_disable_helpers(ctx, 1);
+    g_message("umount fs: %s", mnt_context_get_fstype(ctx));
     ret = mnt_context_umount(ctx);
     if (ret || mnt_context_get_status(ctx) != 1) {
         err = g_malloc0(256 * sizeof(gchar));
