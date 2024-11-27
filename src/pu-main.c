@@ -58,9 +58,6 @@ cmd_install(PuCommandContext *context,
     gchar **args;
     gboolean is_mounted;
 
-    if (getuid() != 0)
-        return error_not_root(error);
-
     args = pu_command_context_get_args(context);
     package_path = g_strdup(args[0]);
     device_path = g_strdup(args[1]);
@@ -153,9 +150,6 @@ cmd_show(PuCommandContext *context,
          GError **error)
 {
     gchar **args;
-
-    if (getuid() != 0)
-        return error_not_root(error);
 
     args = pu_command_context_get_args(context);
 
