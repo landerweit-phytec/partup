@@ -31,8 +31,8 @@ pu_create_mount_point(const gchar *name,
 
     if (g_mkdir_with_parents(mount_point, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) < 0) {
         g_set_error(error, PU_ERROR, PU_ERROR_FAILED,
-                    "Failed creating mount point '%s', errno %u",
-                    mount_point, errno);
+                    "Failed creating mount point '%s', %s",
+                    mount_point, g_strerror(errno));
         return NULL;
     }
 
@@ -92,6 +92,7 @@ pu_mount(const gchar *source,
          GError **error)
 {
     gint ret;
+    g_autofree gchar *err = NULL;
     struct libmnt_context *ctx;
 
     g_return_val_if_fail(g_strcmp0(source, "") > 0, FALSE);
@@ -117,8 +118,11 @@ pu_mount(const gchar *source,
 
     ret = mnt_context_mount(ctx);
     if (ret || mnt_context_get_status(ctx) != 1) {
+        err = g_malloc0(256 * sizeof(gchar));
+        ret = mnt_context_get_excode(ctx, ret, err, 256 * sizeof(gchar));
         g_set_error(error, PU_ERROR, PU_ERROR_MOUNT,
-                    "Failed mounting '%s' to '%s'", source, mount_point);
+                    "Failed mounting '%s' to '%s', %s", source, mount_point,
+                    err);
         mnt_free_context(ctx);
         return FALSE;
     }
@@ -132,6 +136,7 @@ pu_umount(const gchar *mount_point,
           GError **error)
 {
     gint ret;
+    g_autofree gchar *err = NULL;
     struct libmnt_context *ctx;
 
     g_return_val_if_fail(g_strcmp0(mount_point, "") > 0, FALSE);
@@ -149,8 +154,10 @@ pu_umount(const gchar *mount_point,
     mnt_context_set_target(ctx, mount_point);
     ret = mnt_context_umount(ctx);
     if (ret || mnt_context_get_status(ctx) != 1) {
+        err = g_malloc0(256 * sizeof(gchar));
+        ret = mnt_context_get_excode(ctx, ret, err, 256 * sizeof(gchar));
         g_set_error(error, PU_ERROR, PU_ERROR_MOUNT,
-                    "Failed unmounting '%s'", mount_point);
+                    "Failed unmounting '%s', %s", mount_point, err);
         mnt_free_context(ctx);
         return FALSE;
     }
